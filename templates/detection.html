@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Drowsiness Detection and Tips</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quote_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/corso_style.css') }}">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
+</head>
+<body>
+    <!-- Detection Section -->
+    <div class="detection">
+        <center>
+            <form action="/">
+               <div class="jumbotron" id="cimg">
+                   <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="placeholder-logo"/>
+               </div>
+            </form>
+            <br>
+            <div class="container">
+                <button class="button-1"
+                        id="start"
+                        name="camera_switch"
+                        value="1"
+                        onClick="start(); smoothScroll(document.getElementById('motivation'))">
+                    Start
+                </button>
+                <button class="button-2"
+                        id="stop"
+                        name="camera_switch"
+                        value="0"
+                        onClick="stop()">
+                    Stop
+                </button>
+            </div>
+        </center>
+    </div>
+
+    <!-- Motivational Image Carousel -->
+    <div class="motivation-section" id="motivation">
+        <h2 class="motivation-heading">Stay Motivated 💪</h2>
+        <div class="motivation-carousel">
+            <div class="motivation-slide active">
+                <img src="{{ url_for('static', filename='images/pic1.jpg') }}" alt="Motivation 1">
+            </div>
+            <div class="motivation-slide">
+                <img src="{{ url_for('static', filename='images/pic2.jpg') }}" alt="Motivation 2">
+            </div>
+            <div class="motivation-slide">
+                <img src="{{ url_for('static', filename='images/pic3.jpg') }}" alt="Motivation 3">
+            </div>
+        </div>
+
+        <div class="motivation-nav">
+            <button id="prevSlide">⏪ Prev</button>
+            <button id="nextSlide">Next ⏩</button>
+        </div>
+    </div>
+
+    <!-- Tips Carousel Section -->
+    <div class="carousel" id="quotes">
+        <div class="carousel__nav">
+            <span id="moveLeft" class="carousel__arrow">
+                <svg class="carousel__icon" width="24" height="24" viewBox="0 0 24 24">
+                    <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"></path>
+                </svg>
+            </span>
+            <span id="moveRight" class="carousel__arrow">
+                <svg class="carousel__icon" width="24" height="24" viewBox="0 0 24 24">
+                    <path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"></path>
+                </svg>
+            </span>
+        </div>
+
+        {% for tip in tips %}
+            <div class="carousel-item carousel-item--{{ loop.index }}">
+                <div class="carousel-item__image"></div>
+                <div class="carousel-item__info">
+                    <div class="carousel-item__container">
+                        <h2 class="carousel-item__subtitle">Some Tips For You</h2>
+                        <h1 class="carousel-item__title">{{ tip[0] }}</h1>
+                        <p class="carousel-item__description">{{ tip[1] }}</p>
+                        <a href="{{ tip[2]|trim }}" 
+                           class="carousel-item__btn" target="_blank">
+                           Read the article
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Quote of the Day -->
+    <div class="second">
+        <div class="wrapper">
+            <h1 style="text-align: center;">Quote of the Day</h1>
+            <div class="content">
+                <div class="quote-area">
+                    <i class="fas fa-quote-left"></i>
+                    <p class="quote">
+                        Never give up because you never know if the next try is going to be the one that works.
+                    </p>
+                    <i class="fas fa-quote-right"></i>
+                </div>
+                <div class="author">
+                    <span>__</span>
+                    <span class="name">Mary Kay Ash</span>
+                </div>
+            </div>
+            <div class="buttons">
+                <div class="features">
+                    <ul>
+                        <li class="speech"><i class="fas fa-volume-up"></i></li>
+                        <li class="copy"><i class="fas fa-copy"></i></li>
+                        <li class="twitter"><i class="fab fa-twitter"></i></li>
+                    </ul>
+                    <button class="newQuote">New Quote</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+<!-- Scripts -->
+<script>
+    function start(){             
+        document.getElementById('cimg').innerHTML =
+            '<img src="{{ url_for("video") }}" width="100%"/>';                              
+    }
+    
+    function stop(){  
+        window.location.reload();
+        document.getElementById('cimg').innerHTML =
+            '<img src="{{ url_for("static", filename="images/logo.png") }}" width="100%"/>';                
+    }  
+    
+    window.smoothScroll = function(target) {
+        var scrollContainer = target;
+        do {
+            scrollContainer = scrollContainer.parentNode;
+            if (!scrollContainer) return;
+            scrollContainer.scrollTop += 1;
+        } while (scrollContainer.scrollTop == 0);
+
+        var targetY = 0;
+        do { 
+            if (target == scrollContainer) break;
+            targetY += target.offsetTop;
+        } while (target = target.offsetParent);
+
+        scroll = function(c, a, b, i) {
+            i++; if (i > 30) return;
+            c.scrollTop = a + (b - a) / 30 * i;
+            setTimeout(function(){ scroll(c, a, b, i); }, 20);
+        }
+      
+        scroll(scrollContainer, scrollContainer.scrollTop, targetY, 0);
+    }
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="{{ url_for('static', filename='js/quotes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/corso.js') }}"></script>
+</html>

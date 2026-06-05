@@ -1,0 +1,80 @@
+.motivation-section {
+    margin: 40px auto;
+    max-width: 800px;
+    text-align: center;
+}
+
+.motivation-heading {
+    margin-bottom: 20px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+
+.motivation-carousel {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 400px;
+    border-radius: 12px;
+    box-shadow: 0px 4px 15px rgba(0,0,0,0.2);
+    background: #f8f8f8;
+}
+
+.motivation-slide {
+    display: none;
+    width: 100%;
+    height: 100%;
+}
+
+.motivation-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.motivation-slide.active {
+    display: block;
+}
+
+.motivation-nav {
+    margin-top: 15px;
+}
+
+.motivation-nav button {
+    background: #007BFF;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    margin: 0 5px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s;
+}
+
+.motivation-nav button:hover {
+    background: #0056b3;
+}
+/* Camera Preview Box */
+#cimg {
+    width: 640px;
+    height: 480px;
+    border: 3px solid #333;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+}
+
+#cimg img.placeholder-logo {
+    max-width: 60%;
+    max-height: 60%;
+    object-fit: contain;
+    opacity: 0.8;
+}
