@@ -7,7 +7,6 @@ import threading
 import time
 import csv
 import random
-import winsound
 import atexit
 
 app = Flask(__name__)
@@ -66,31 +65,19 @@ RIGHT_EYE = [362, 385, 387, 263, 373, 380]
 MOUTH = [61, 291, 81, 178, 13, 14, 17, 402]
 
 EAR_THRESHOLD = 0.21
-MAR_THRESHOLD = 0.55   # improved (more stable)
+MAR_THRESHOLD = 0.55
 
 EYE_FRAMES = 0
 MOUTH_FRAMES = 0
 
 EYE_LIMIT = 5
-MOUTH_LIMIT = 4   # improved stability
+MOUTH_LIMIT = 4
 
 focus_score = 80
-alarm_active_eye = False
-alarm_active_mouth = False
-
-last_eye_alarm = 0
-last_mouth_alarm = 0
+alarm_flag = False
+alarm_type = "none"
 
 atexit.register(lambda: camera.release())
-
-
-def play_alarm():
-    winsound.Beep(1200, 900)
-
-
-def play_big_alarm():
-    winsound.Beep(1500, 600)
-    winsound.Beep(1200, 600)
 
 
 def eye_aspect_ratio(eye):
@@ -109,9 +96,8 @@ def mouth_aspect_ratio(mouth):
 
 def generate_frames():
 
-    global EYE_FRAMES, MOUTH_FRAMES
-    global focus_score, alarm_active_eye, alarm_active_mouth
-    global last_eye_alarm, last_mouth_alarm
+    global EYE_FRAMES, MOUTH_FRAMES, focus_score
+    global alarm_flag, alarm_type
 
     while True:
 
@@ -128,6 +114,9 @@ def generate_frames():
         status = "NO FACE"
         action = "STAY VISIBLE"
         color = (200, 200, 200)
+
+        alarm_flag = False
+        alarm_type = "none"
 
         if results.multi_face_landmarks:
 
@@ -150,21 +139,21 @@ def generate_frames():
             # =========================
             if ear < EAR_THRESHOLD:
                 EYE_FRAMES += 1
+                EYE_FRAMES = min(EYE_FRAMES, 30)
             else:
                 EYE_FRAMES = max(0, EYE_FRAMES - 1)
-                alarm_active_eye = False
 
             # =========================
-            # MOUTH LOGIC (FIXED)
+            # MOUTH LOGIC
             # =========================
             if mar > MAR_THRESHOLD:
                 MOUTH_FRAMES += 1
+                MOUTH_FRAMES = min(MOUTH_FRAMES, 30)
             else:
                 MOUTH_FRAMES = max(0, MOUTH_FRAMES - 1)
-                alarm_active_mouth = False
 
             # =========================
-            # DROWSY
+            # STATE DECISION
             # =========================
             if EYE_FRAMES >= EYE_LIMIT:
 
@@ -174,16 +163,9 @@ def generate_frames():
 
                 focus_score = max(0, focus_score - 3)
 
-                now = time.time()
-                if not alarm_active_eye and (now - last_eye_alarm > 2):
+                alarm_flag = True
+                alarm_type = "drowsy"
 
-                    alarm_active_eye = True
-                    last_eye_alarm = now
-                    threading.Thread(target=play_alarm, daemon=True).start()
-
-            # =========================
-            # YAWNING (FIXED + BIG SOUND)
-            # =========================
             elif MOUTH_FRAMES >= MOUTH_LIMIT:
 
                 status = "YAWNING 🥱"
@@ -192,16 +174,9 @@ def generate_frames():
 
                 focus_score = max(0, focus_score - 2)
 
-                now = time.time()
-                if not alarm_active_mouth and (now - last_mouth_alarm > 2):
+                alarm_flag = True
+                alarm_type = "yawning"
 
-                    alarm_active_mouth = True
-                    last_mouth_alarm = now
-                    threading.Thread(target=play_big_alarm, daemon=True).start()
-
-            # =========================
-            # FOCUSED
-            # =========================
             else:
 
                 status = "FOCUSED 🙂"
@@ -256,6 +231,14 @@ def video():
 @app.route("/get_quote")
 def get_quote():
     return jsonify(random.choice(quotes_list))
+
+
+@app.route("/status")
+def status():
+    return jsonify({
+        "alarm": alarm_flag,
+        "type": alarm_type
+    })
 
 
 if __name__ == "__main__":

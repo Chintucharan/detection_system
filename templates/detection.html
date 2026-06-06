@@ -13,6 +13,7 @@
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
 </head>
 <body>
+    <audio id="alarmSound" src="{{ url_for('static', filename='alarm.wav') }}"></audio>
     <!-- Detection Section -->
     <div class="detection">
         <center>
@@ -166,4 +167,5 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="{{ url_for('static', filename='js/quotes.js') }}"></script>
 <script src="{{ url_for('static', filename='js/corso.js') }}"></script>
+<script src="{{ url_for('static', filename='js/alarm.js') }}"></script>
 </html>
