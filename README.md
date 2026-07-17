@@ -127,37 +127,27 @@ http://127.0.0.1:5000
 
 ---
 
-# 📸 Screenshots
+## 📸 Screenshots
 
-## 🏠 Home Page
+### 🏠 Home Page
 
 ![Home Page](screenshots/home.png)
 
----
-
-## 🎥 Detection Page
+### 🎥 Detection Page
 
 ![Detection Page](screenshots/detection.png)
 
----
-
-## 💪 Motivation Section
+### 💪 Motivation Section
 
 ![Motivation Section](screenshots/motivation.png)
 
----
-
-## 📖 Study Tips
+### 📖 Study Tips
 
 ![Study Tips](screenshots/tips.png)
 
----
-
-## 💬 Quote of the Day
+### 💬 Quote of the Day
 
 ![Quote of the Day](screenshots/quotes.png)
-
----
 
 # 💡 Applications
 
