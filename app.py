@@ -1,14 +1,13 @@
-from flask import Flask, render_template, Response, jsonify
+from flask import Flask, render_template, request, jsonify
 import cv2
 import mediapipe as mp
 import numpy as np
-from scipy.spatial import distance as dist
-import threading
-import time
-import csv
+import base64
 import random
-import atexit
+import csv
+from scipy.spatial import distance as dist
 
+app = Flask(__name__)
 app = Flask(__name__)
 
 tips_list = []
@@ -23,10 +22,8 @@ try:
                     "description": row[1],
                     "link": row[2]
                 })
-except FileNotFoundError:
+except:
     pass
-
-
 quotes_list = [
     {"content": "Stay consistent. Small daily improvements lead to massive long-term success.", "author": "Unknown"},
     {"content": "Discipline is choosing between what you want now and what you want most.", "author": "Abraham Lincoln"},
@@ -50,9 +47,8 @@ quotes_list = [
     {"content": "Success is built when no one is watching.", "author": "Unknown"},
 ]
 
-camera = cv2.VideoCapture(0)
-
 mp_face = mp.solutions.face_mesh
+
 face_mesh = mp_face.FaceMesh(
     max_num_faces=1,
     refine_landmarks=True,
@@ -60,156 +56,115 @@ face_mesh = mp_face.FaceMesh(
     min_tracking_confidence=0.5
 )
 
-LEFT_EYE = [33, 160, 158, 133, 153, 144]
-RIGHT_EYE = [362, 385, 387, 263, 373, 380]
-MOUTH = [61, 291, 81, 178, 13, 14, 17, 402]
+LEFT_EYE=[33,160,158,133,153,144]
+RIGHT_EYE=[362,385,387,263,373,380]
+MOUTH=[61,291,81,178,13,14,17,402]
 
-EAR_THRESHOLD = 0.21
-MAR_THRESHOLD = 0.55
+EAR_THRESHOLD=0.21
+MAR_THRESHOLD=0.55
 
-EYE_FRAMES = 0
-MOUTH_FRAMES = 0
+EYE_FRAMES=0
+MOUTH_FRAMES=0
 
-EYE_LIMIT = 5
-MOUTH_LIMIT = 4
+EYE_LIMIT=5
+MOUTH_LIMIT=4
 
-focus_score = 80
-alarm_flag = False
-alarm_type = "none"
+focus_score=80
 
-atexit.register(lambda: camera.release())
-
+alarm=False
+alarm_type="none"
 
 def eye_aspect_ratio(eye):
-    A = dist.euclidean(eye[1], eye[5])
-    B = dist.euclidean(eye[2], eye[4])
-    C = dist.euclidean(eye[0], eye[3])
-    return (A + B) / (2.0 * C)
-
+    A=dist.euclidean(eye[1],eye[5])
+    B=dist.euclidean(eye[2],eye[4])
+    C=dist.euclidean(eye[0],eye[3])
+    return (A+B)/(2*C)
 
 def mouth_aspect_ratio(mouth):
-    A = dist.euclidean(mouth[2], mouth[6])
-    B = dist.euclidean(mouth[3], mouth[5])
-    C = dist.euclidean(mouth[0], mouth[1])
-    return (A + B) / (2.0 * C)
+    A=dist.euclidean(mouth[2],mouth[6])
+    B=dist.euclidean(mouth[3],mouth[5])
+    C=dist.euclidean(mouth[0],mouth[1])
+    return (A+B)/(2*C)
+def process_frame(frame):
 
+    global EYE_FRAMES, MOUTH_FRAMES
+    global focus_score
+    global alarm
+    global alarm_type
 
-def generate_frames():
+    alarm = False
+    alarm_type = "none"
 
-    global EYE_FRAMES, MOUTH_FRAMES, focus_score
-    global alarm_flag, alarm_type
+    frame = cv2.flip(frame, 1)
 
-    while True:
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        success, frame = camera.read()
-        if not success:
-            break
+    results = face_mesh.process(rgb)
 
-        frame = cv2.resize(frame, (640, 480))
-        frame = cv2.flip(frame, 1)
+    status = "NO FACE"
 
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = face_mesh.process(rgb)
+    if results.multi_face_landmarks:
 
-        status = "NO FACE"
-        action = "STAY VISIBLE"
-        color = (200, 200, 200)
+        face = results.multi_face_landmarks[0]
 
-        alarm_flag = False
-        alarm_type = "none"
+        h, w, _ = frame.shape
 
-        if results.multi_face_landmarks:
+        def pts(idx):
+            return [
+                (int(face.landmark[i].x * w),
+                 int(face.landmark[i].y * h))
+                for i in idx
+            ]
 
-            face = results.multi_face_landmarks[0]
-            h, w, _ = frame.shape
+        left = pts(LEFT_EYE)
+        right = pts(RIGHT_EYE)
+        mouth = pts(MOUTH)
 
-            def pts(idx):
-                return [(int(face.landmark[i].x * w),
-                         int(face.landmark[i].y * h)) for i in idx]
+        ear = (eye_aspect_ratio(left) + eye_aspect_ratio(right)) / 2
+        mar = mouth_aspect_ratio(mouth)
 
-            left_eye = pts(LEFT_EYE)
-            right_eye = pts(RIGHT_EYE)
-            mouth = pts(MOUTH)
+        if ear < EAR_THRESHOLD:
+            EYE_FRAMES = min(EYE_FRAMES + 1, 30)
+        else:
+            EYE_FRAMES = max(EYE_FRAMES - 1, 0)
 
-            ear = (eye_aspect_ratio(left_eye) + eye_aspect_ratio(right_eye)) / 2
-            mar = mouth_aspect_ratio(mouth)
+        if mar > MAR_THRESHOLD:
+            MOUTH_FRAMES = min(MOUTH_FRAMES + 1, 30)
+        else:
+            MOUTH_FRAMES = max(MOUTH_FRAMES - 1, 0)
 
-            # =========================
-            # EYE LOGIC
-            # =========================
-            if ear < EAR_THRESHOLD:
-                EYE_FRAMES += 1
-                EYE_FRAMES = min(EYE_FRAMES, 30)
-            else:
-                EYE_FRAMES = max(0, EYE_FRAMES - 1)
+        if EYE_FRAMES >= EYE_LIMIT:
 
-            # =========================
-            # MOUTH LOGIC
-            # =========================
-            if mar > MAR_THRESHOLD:
-                MOUTH_FRAMES += 1
-                MOUTH_FRAMES = min(MOUTH_FRAMES, 30)
-            else:
-                MOUTH_FRAMES = max(0, MOUTH_FRAMES - 1)
+            status = "DROWSY 😴"
 
-            # =========================
-            # STATE DECISION
-            # =========================
-            if EYE_FRAMES >= EYE_LIMIT:
+            focus_score = max(0, focus_score - 3)
 
-                status = "DROWSY 😴"
-                action = "WAKE UP ⚠️"
-                color = (0, 0, 255)
+            alarm = True
+            alarm_type = "drowsy"
 
-                focus_score = max(0, focus_score - 3)
+        elif MOUTH_FRAMES >= MOUTH_LIMIT:
 
-                alarm_flag = True
-                alarm_type = "drowsy"
+            status = "YAWNING 🥱"
 
-            elif MOUTH_FRAMES >= MOUTH_LIMIT:
+            focus_score = max(0, focus_score - 2)
 
-                status = "YAWNING 🥱"
-                action = "TAKE BREAK ☕"
-                color = (0, 165, 255)
+            alarm = True
+            alarm_type = "yawning"
 
-                focus_score = max(0, focus_score - 2)
+        else:
 
-                alarm_flag = True
-                alarm_type = "yawning"
+            status = "FOCUSED 🙂"
 
-            else:
+            focus_score = min(100, focus_score + 1)
 
-                status = "FOCUSED 🙂"
-                action = "KEEP GOING 💪"
-                color = (0, 255, 0)
-
-                focus_score = min(100, focus_score + 1)
-
-            for p in left_eye + right_eye + mouth:
-                cv2.circle(frame, p, 1, color, -1)
-
-        cv2.putText(frame, f"STATUS: {status}", (20, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-
-        cv2.putText(frame, f"ACTION: {action}", (20, 80),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-
-        cv2.putText(frame, f"FOCUS: {focus_score}", (20, 120),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
-
-        cv2.putText(frame, f"EYE: {EYE_FRAMES}", (20, 160),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 2)
-
-        cv2.putText(frame, f"MOUTH: {MOUTH_FRAMES}", (20, 190),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 2)
-
-        _, buffer = cv2.imencode(".jpg", frame)
-        frame_bytes = buffer.tobytes()
-
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
-
+    return {
+        "status": status,
+        "focus_score": focus_score,
+        "eye_frames": EYE_FRAMES,
+        "mouth_frames": MOUTH_FRAMES,
+        "alarm": alarm,
+        "type": alarm_type
+    }
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -217,29 +172,50 @@ def home():
 
 @app.route("/detection")
 def detection():
-    return render_template("detection.html",
-                           tips=tips_list,
-                           quotes=quotes_list)
+    return render_template(
+        "detection.html",
+        tips=tips_list,
+        quotes=quotes_list
+    )
 
 
-@app.route("/video")
-def video():
-    return Response(generate_frames(),
-                    mimetype="multipart/x-mixed-replace; boundary=frame")
+@app.route("/predict", methods=["POST"])
+def predict():
 
+    data = request.json["frame"]
 
-@app.route("/get_quote")
-def get_quote():
-    return jsonify(random.choice(quotes_list))
+    encoded = data.split(",")[1]
+
+    img = base64.b64decode(encoded)
+
+    npimg = np.frombuffer(img, np.uint8)
+
+    frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+
+    result = process_frame(frame)
+
+    return jsonify(result)
 
 
 @app.route("/status")
 def status():
+
     return jsonify({
-        "alarm": alarm_flag,
+        "alarm": alarm,
         "type": alarm_type
     })
 
 
+@app.route("/get_quote")
+def get_quote():
+
+    return jsonify(random.choice(quotes_list))
+
+
 if __name__ == "__main__":
-    app.run(debug=False)
+
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=False
+    )

@@ -1,171 +1,615 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Drowsiness Detection and Tips</title>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Siksha Mitra | Drowsiness Detection</title>
 
-    <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/quote_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/corso_style.css') }}">
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
-</head>
-<body>
-    <audio id="alarmSound" src="{{ url_for('static', filename='alarm.wav') }}"></audio>
-    <!-- Detection Section -->
-    <div class="detection">
-        <center>
-            <form action="/">
-               <div class="jumbotron" id="cimg">
-                   <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="placeholder-logo"/>
-               </div>
-            </form>
-            <br>
-            <div class="container">
-                <button class="button-1"
-                        id="start"
-                        name="camera_switch"
-                        value="1"
-                        onClick="start(); smoothScroll(document.getElementById('motivation'))">
-                    Start
-                </button>
-                <button class="button-2"
-                        id="stop"
-                        name="camera_switch"
-                        value="0"
-                        onClick="stop()">
-                    Stop
-                </button>
-            </div>
-        </center>
-    </div>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Motivational Image Carousel -->
-    <div class="motivation-section" id="motivation">
-        <h2 class="motivation-heading">Stay Motivated 💪</h2>
-        <div class="motivation-carousel">
-            <div class="motivation-slide active">
-                <img src="{{ url_for('static', filename='images/pic1.jpg') }}" alt="Motivation 1">
-            </div>
-            <div class="motivation-slide">
-                <img src="{{ url_for('static', filename='images/pic2.jpg') }}" alt="Motivation 2">
-            </div>
-            <div class="motivation-slide">
-                <img src="{{ url_for('static', filename='images/pic3.jpg') }}" alt="Motivation 3">
-            </div>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/quote_style.css') }}"
+    />
+
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/corso_style.css') }}"
+    />
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Open Sans", sans-serif;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        min-height: 100vh;
+      }
+
+      /* Webcam Section */
+
+      .detection {
+        padding: 50px 20px;
+        text-align: center;
+      }
+
+      .video-container {
+        width: 90%;
+        max-width: 800px;
+        margin: auto;
+
+        background: #000;
+
+        border-radius: 20px;
+
+        overflow: hidden;
+
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+
+        position: relative;
+      }
+
+      #video {
+        width: 100%;
+        display: none;
+      }
+
+      #canvas {
+        display: none;
+      }
+
+      .placeholder-logo {
+        width: 300px;
+
+        padding: 80px;
+
+        opacity: 0.8;
+      }
+
+      .stats-overlay {
+        position: absolute;
+
+        top: 20px;
+
+        left: 20px;
+
+        background: rgba(0, 0, 0, 0.7);
+
+        color: white;
+
+        padding: 15px;
+
+        border-radius: 10px;
+
+        display: none;
+
+        text-align: left;
+      }
+
+      .status-focused {
+        color: #00ff00;
+      }
+
+      .status-drowsy {
+        color: red;
+      }
+
+      .status-yawn {
+        color: orange;
+      }
+
+      /* Buttons */
+
+      .container {
+        margin-top: 30px;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .button-1,
+      .button-2 {
+        padding: 15px 40px;
+
+        border: none;
+
+        border-radius: 30px;
+
+        margin: 10px;
+
+        font-size: 18px;
+
+        font-weight: bold;
+      }
+
+      .button-1 {
+        background: #00ff00;
+
+        color: black;
+      }
+
+      .button-2 {
+        background: #ff3333;
+
+        color: white;
+      }
+
+      .button-2:disabled {
+        opacity: 0.5;
+      }
+    </style>
+  </head>
+
+  <body>
+    <audio
+      id="alarmSound"
+      src="{{ url_for('static', filename='alarm.wav') }}"
+    ></audio>
+
+    <!-- ===============================
+        WEBCAM DETECTION
+================================ -->
+
+    <section class="detection">
+      <div class="video-container">
+        <video id="video" autoplay playsinline></video>
+
+        <canvas id="canvas"> </canvas>
+
+        <img
+          id="logo"
+          class="placeholder-logo"
+          src="{{ url_for('static', filename='images/logo.png') }}"
+          alt="Siksha Mitra"
+        />
+
+        <div class="stats-overlay" id="stats">
+          <p>
+            STATUS:
+            <span id="status"> NO FACE </span>
+          </p>
+
+          <p>
+            FOCUS:
+            <span id="focus"> 0 </span>
+          </p>
+
+          <p>
+            EYE:
+            <span id="eye"> 0 </span>
+          </p>
+
+          <p>
+            MOUTH:
+            <span id="mouth"> 0 </span>
+          </p>
+        </div>
+      </div>
+
+      <div class="container">
+        <button class="button-1" id="startBtn" onclick="startDetection()">
+          START DETECTION
+        </button>
+
+        <button
+          class="button-2"
+          id="stopBtn"
+          onclick="stopDetection()"
+          disabled
+        >
+          STOP
+        </button>
+      </div>
+    </section>
+    <!-- ===============================
+      MOTIVATION SECTION
+================================ -->
+
+    <section class="motivation-section" id="motivation">
+      <h2 class="motivation-heading">Stay Motivated 💪</h2>
+
+      <div class="motivation-carousel">
+        <div class="motivation-slide active">
+          <img
+            src="{{ url_for('static', filename='images/pic1.jpg') }}"
+            alt="Motivation 1"
+          />
         </div>
 
-        <div class="motivation-nav">
-            <button id="prevSlide">⏪ Prev</button>
-            <button id="nextSlide">Next ⏩</button>
-        </div>
-    </div>
-
-    <!-- Tips Carousel Section -->
-    <div class="carousel" id="quotes">
-        <div class="carousel__nav">
-            <span id="moveLeft" class="carousel__arrow">
-                <svg class="carousel__icon" width="24" height="24" viewBox="0 0 24 24">
-                    <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"></path>
-                </svg>
-            </span>
-            <span id="moveRight" class="carousel__arrow">
-                <svg class="carousel__icon" width="24" height="24" viewBox="0 0 24 24">
-                    <path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"></path>
-                </svg>
-            </span>
+        <div class="motivation-slide">
+          <img
+            src="{{ url_for('static', filename='images/pic2.jpg') }}"
+            alt="Motivation 2"
+          />
         </div>
 
-        {% for tip in tips %}
-            <div class="carousel-item carousel-item--{{ loop.index }}">
-                <div class="carousel-item__image"></div>
-                <div class="carousel-item__info">
-                    <div class="carousel-item__container">
-                        <h2 class="carousel-item__subtitle">Some Tips For You</h2>
-                        <h1 class="carousel-item__title">{{ tip[0] }}</h1>
-                        <p class="carousel-item__description">{{ tip[1] }}</p>
-                        <a href="{{ tip[2]|trim }}" 
-                           class="carousel-item__btn" target="_blank">
-                           Read the article
-                        </a>
-                    </div>
-                </div>
-            </div>
-        {% endfor %}
-    </div>
-
-    <!-- Quote of the Day -->
-    <div class="second">
-        <div class="wrapper">
-            <h1 style="text-align: center;">Quote of the Day</h1>
-            <div class="content">
-                <div class="quote-area">
-                    <i class="fas fa-quote-left"></i>
-                    <p class="quote">
-                        Never give up because you never know if the next try is going to be the one that works.
-                    </p>
-                    <i class="fas fa-quote-right"></i>
-                </div>
-                <div class="author">
-                    <span>__</span>
-                    <span class="name">Mary Kay Ash</span>
-                </div>
-            </div>
-            <div class="buttons">
-                <div class="features">
-                    <ul>
-                        <li class="speech"><i class="fas fa-volume-up"></i></li>
-                        <li class="copy"><i class="fas fa-copy"></i></li>
-                        <li class="twitter"><i class="fab fa-twitter"></i></li>
-                    </ul>
-                    <button class="newQuote">New Quote</button>
-                </div>
-            </div>
+        <div class="motivation-slide">
+          <img
+            src="{{ url_for('static', filename='images/pic3.jpg') }}"
+            alt="Motivation 3"
+          />
         </div>
+      </div>
+
+      <div class="motivation-nav">
+        <button onclick="changeMotivation(-1)">⏪ Prev</button>
+
+        <button onclick="changeMotivation(1)">Next ⏩</button>
+      </div>
+    </section>
+
+    <!-- ===============================
+          TIPS SECTION
+================================ -->
+
+    <section class="carousel" id="quotes">
+
+    <div class="carousel__nav">
+
+        <span class="carousel__arrow" onclick="changeTip(-1)">
+            <i class="fas fa-chevron-left"></i>
+        </span>
+
+        <span class="carousel__arrow" onclick="changeTip(1)">
+            <i class="fas fa-chevron-right"></i>
+        </span>
+
     </div>
-</body>
 
-<!-- Scripts -->
-<script>
-    function start(){             
-        document.getElementById('cimg').innerHTML =
-            '<img src="{{ url_for("video") }}" width="100%"/>';                              
-    }
-    
-    function stop(){  
-        window.location.reload();
-        document.getElementById('cimg').innerHTML =
-            '<img src="{{ url_for("static", filename="images/logo.png") }}" width="100%"/>';                
-    }  
-    
-    window.smoothScroll = function(target) {
-        var scrollContainer = target;
-        do {
-            scrollContainer = scrollContainer.parentNode;
-            if (!scrollContainer) return;
-            scrollContainer.scrollTop += 1;
-        } while (scrollContainer.scrollTop == 0);
+    {% for tip in tips %}
 
-        var targetY = 0;
-        do { 
-            if (target == scrollContainer) break;
-            targetY += target.offsetTop;
-        } while (target = target.offsetParent);
+    <div class="carousel-item {% if loop.index == 1 %}active{% endif %}">
 
-        scroll = function(c, a, b, i) {
-            i++; if (i > 30) return;
-            c.scrollTop = a + (b - a) / 30 * i;
-            setTimeout(function(){ scroll(c, a, b, i); }, 20);
+        <div class="carousel-item__info">
+
+            <h2 class="carousel-item__subtitle">
+                Tip #{{ loop.index }}
+            </h2>
+
+            <h1 class="carousel-item__title">
+                {{ tip.title }}
+            </h1>
+
+            <p class="carousel-item__description">
+                {{ tip.description }}
+            </p>
+
+            <a href="{{ tip.link }}"
+               target="_blank"
+               class="carousel-item__btn">
+
+                Read Article
+
+            </a>
+
+        </div>
+
+    </div>
+
+    {% endfor %}
+
+</section>
+    <!-- ===============================
+          QUOTE SECTION
+================================ -->
+
+    <section class="second">
+      <div class="wrapper">
+        <h1 style="text-align: center">Quote of the Day</h1>
+
+        <div class="content">
+          <div class="quote-area">
+            <i class="fas fa-quote-left"></i>
+
+            <p class="quote" id="quoteText">
+              Never give up because you never know if the next try is going to
+              be the one that works.
+            </p>
+            <i class="fas fa-quote-right"></i>
+          </div>
+          <div class="author">
+            <span>__</span>
+            <span class="name" id="quoteAuthor"> Mary Kay Ash </span>
+          </div>
+        </div>
+
+        <div class="buttons">
+          <div class="features">
+            <ul>
+              <li class="speech" onclick="speakQuote()">
+                <i class="fas fa-volume-up"></i>
+              </li>
+              <li class="copy" onclick="copyQuote()">
+                <i class="fas fa-copy"></i>
+              </li>
+              <li class="twitter" onclick="tweetQuote()">
+                <i class="fab fa-twitter"></i>
+              </li>
+            </ul>
+            <button class="newQuote" onclick="loadNewQuote()">New Quote</button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <script>
+      let stream = null;
+      let frameInterval = null;
+      let alarmInterval = null;
+      let lastAlarm = 0;
+      // ===============================
+      // START WEBCAM
+      // ===============================
+      async function startDetection() {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+
+          let video = document.getElementById("video");
+          video.srcObject = stream;
+          video.style.display = "block";
+          document.getElementById("logo").style.display = "none";
+          document.getElementById("stats").style.display = "block";
+          document.getElementById("startBtn").disabled = true;
+          document.getElementById("stopBtn").disabled = false;
+
+          // send frames every 250ms
+          frameInterval = setInterval(sendFrame, 250);
+          // check alarm
+          alarmInterval = setInterval(checkAlarm, 1000);
+          // unlock browser audio
+          let audio = document.getElementById("alarmSound");
+          audio
+            .play()
+            .then(() => {
+              audio.pause();
+              audio.currentTime = 0;
+            })
+            .catch(() => {});
+        } catch (error) {
+          alert("Camera permission denied. Please allow webcam access.");
+          console.log(error);
         }
-      
-        scroll(scrollContainer, scrollContainer.scrollTop, targetY, 0);
-    }
-</script>
+      }
+      // ===============================
+      // STOP WEBCAM
+      // ===============================
+      function stopDetection() {
+        clearInterval(frameInterval);
+        clearInterval(alarmInterval);
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-<script src="{{ url_for('static', filename='js/quotes.js') }}"></script>
-<script src="{{ url_for('static', filename='js/corso.js') }}"></script>
-<script src="{{ url_for('static', filename='js/alarm.js') }}"></script>
+        let video = document.getElementById("video");
+
+        if (stream) {
+          stream.getTracks().forEach((track) => {
+            track.stop();
+          });
+
+          video.srcObject = null;
+          stream = null;
+        }
+
+        video.style.display = "none";
+
+        document.getElementById("logo").style.display = "block";
+        document.getElementById("stats").style.display = "none";
+
+        document.getElementById("startBtn").disabled = false;
+        document.getElementById("stopBtn").disabled = true;
+      }
+      // ===============================
+      // SEND FRAME TO FLASK
+      // ===============================
+      async function sendFrame() {
+        let video = document.getElementById("video");
+        let canvas = document.getElementById("canvas");
+
+        if (video.videoWidth === 0) return;
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        let ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0);
+
+        let image = canvas.toDataURL("image/jpeg", 0.8);
+
+        try {
+          let response = await fetch("/predict", {
+            method: "POST",
+
+            cache: "no-store",
+
+            headers: {
+              "Content-Type": "application/json",
+            },
+
+            body: JSON.stringify({
+              frame: image,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Server Error");
+          }
+
+          let data = await response.json();
+
+          updateStats(data);
+        } catch (err) {
+          console.error("Prediction Error:", err);
+        }
+      }
+
+      function updateStats(data) {
+        if (data.status !== undefined) {
+          document.getElementById("status").innerHTML = data.status;
+        }
+
+        if (data.focus_score !== undefined) {
+          document.getElementById("focus").innerHTML = data.focus_score;
+        }
+
+        if (data.eye_frames !== undefined) {
+          document.getElementById("eye").innerHTML = data.eye_frames;
+        }
+
+        if (data.mouth_frames !== undefined) {
+          document.getElementById("mouth").innerHTML = data.mouth_frames;
+        }
+      }
+      // ===============================
+      // ALARM CHECK
+      // ===============================
+
+      async function checkAlarm() {
+        try {
+          let response = await fetch("/status", {
+            cache: "no-store",
+          });
+
+          if (!response.ok) {
+            throw new Error("Status request failed");
+          }
+
+          let data = await response.json();
+
+          let now = Date.now();
+
+          if (data.alarm === true && now - lastAlarm > 3000) {
+            let audio = document.getElementById("alarmSound");
+
+            audio.currentTime = 0;
+
+            audio.play().catch((err) => {
+              console.log("Audio play blocked:", err);
+            });
+
+            lastAlarm = now;
+          }
+        } catch (err) {
+          console.log("Alarm Error:", err);
+        }
+      }
+
+      // ===============================
+      // VOICE QUOTE
+      // ===============================
+
+      function speakQuote() {
+        let text = document.getElementById("quoteText").innerText;
+
+        let speech = new SpeechSynthesisUtterance(text);
+
+        speech.rate = 1;
+
+        speechSynthesis.cancel();
+        speechSynthesis.speak(speech);
+      }
+
+      // ===============================
+      // COPY QUOTE
+      // ===============================
+
+      function copyQuote() {
+        let text = document.getElementById("quoteText").innerText;
+
+        navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            alert("Quote copied");
+          })
+          .catch((err) => {
+            console.log(err);
+          });
+      }
+
+      // ===============================
+      // TWITTER SHARE
+      // ===============================
+
+      function tweetQuote() {
+        let text = document.getElementById("quoteText").innerText;
+
+        let url =
+          "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text);
+
+        window.open(url, "_blank");
+      }
+
+      // ===============================
+      // NEW QUOTE
+      // ===============================
+
+      async function loadNewQuote() {
+        try {
+          let response = await fetch("/get_quote", {
+            cache: "no-store",
+          });
+
+          if (!response.ok) {
+            throw new Error("Quote request failed");
+          }
+
+          let data = await response.json();
+
+          document.getElementById("quoteText").innerHTML = data.content;
+          document.getElementById("quoteAuthor").innerHTML = data.author;
+        } catch (err) {
+          console.log("Quote Error:", err);
+        }
+      }
+
+      // ===============================
+      // MOTIVATION CAROUSEL
+      // ===============================
+
+      let motivationIndex = 0;
+
+      function changeMotivation(direction) {
+        let slides = document.querySelectorAll(".motivation-slide");
+
+        if (slides.length === 0) return;
+
+        slides[motivationIndex].classList.remove("active");
+
+        motivationIndex =
+          (motivationIndex + direction + slides.length) % slides.length;
+
+        slides[motivationIndex].classList.add("active");
+      }
+
+      setInterval(() => {
+        changeMotivation(1);
+      }, 5000);
+
+      // ===============================
+      // TIPS CAROUSEL
+      // ===============================
+
+      let tipIndex = 0;
+
+      function changeTip(direction) {
+        let tips = document.querySelectorAll(".carousel-item");
+
+        if (tips.length === 0) return;
+
+        tips[tipIndex].classList.remove("active");
+
+        tipIndex = (tipIndex + direction + tips.length) % tips.length;
+
+        tips[tipIndex].classList.add("active");
+      }
+    </script>
+  </body>
 </html>

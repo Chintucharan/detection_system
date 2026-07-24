@@ -13,9 +13,10 @@
     <body>
         <header class="header">
             <img width="300"
-                 height="70"
-                 class="logo"
-                 src="{{ url_for('static', filename='images/logo.png') }}">
+     height="70"
+     class="logo"
+     alt="Siksha Mitra Logo"
+     src="{{ url_for('static', filename='images/logo.png') }}">
             <a class="cta" href="{{ url_for('detection') }}">
                 <button>Get Started</button>
             </a>
@@ -84,7 +85,7 @@
                                     <div class="title">Benefits</div>
                                     <div class="text">
                                         <p>
-                                            Helps in acheiving your goals in much better way
+                                            Helps in achieving your goals in much better way
                                             <br>
                                             Boost efficiency
                                             <br>
@@ -157,9 +158,8 @@
                 </div>
             </section>
         </main>
-        
-        <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js'></script>
-        <script src='https://cdnjs.cloudflare.com/ajax/libs/gsap/1.19.1/TweenMax.min.js'></script>
-        <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+        <script defer src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js'></script>
+        <script defer src='https://cdnjs.cloudflare.com/ajax/libs/gsap/1.19.1/TweenMax.min.js'></script>
+        <script defer src="{{ url_for('static', filename='js/script.js') }}"></script>
     </body>
 </html>

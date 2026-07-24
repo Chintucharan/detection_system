@@ -25,26 +25,28 @@ document.addEventListener("click", () => {
 // poll backend
 setInterval(() => {
 
-    fetch("/status")
-        .then(res => res.json())
-        .then(data => {
+    fetch("/status", {
+        cache: "no-store"
+    })
+    .then(res => res.json())
+    .then(data => {
 
-            const now = Date.now();
+        const now = Date.now();
 
-            if (now - lastPlayTime < COOLDOWN) return;
+        if (now - lastPlayTime < COOLDOWN) return;
 
-            // ✅ Flask key = "alarm"
-            if (data.alarm === true) {
+        // Flask key = "alarm"
+        if (data.alarm === true) {
 
-                playAlarm();
-                lastPlayTime = now;
+            playAlarm();
+            lastPlayTime = now;
 
-                console.log("ALARM TYPE:", data.type);
-            }
+            console.log("ALARM TYPE:", data.type);
+        }
 
-        })
-        .catch(err => {
-            console.log("Status error:", err);
-        });
+    })
+    .catch(err => {
+        console.log("Status error:", err);
+    });
 
 }, 1000);
