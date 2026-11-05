@@ -49,7 +49,7 @@ Drowsiness and loss of attention during long study sessions reduce learning effi
 
 The browser streams webcam frames to a **Flask** backend. The backend uses **MediaPipe Face Mesh** to locate facial landmarks, computes the **Eye Aspect Ratio (EAR)** and **Mouth Aspect Ratio (MAR)**, and applies a **temporal frame-counting filter** to decide whether the user is *focused*, *drowsy* or *yawning*. On detection, the interface plays an audio alarm and lowers a **live focus score**. To support recovery, the application also serves motivational quotes and curated study tips with reference links.
 
-The system uses a purely geometric, landmark-based approach: it needs **no model training and no dataset**, and it runs on CPU.
+The system is a **hybrid pipeline**. Facial landmarks come from MediaPipe's **pretrained deep-learning models** (convolutional neural networks), and the fatigue decision is made by a transparent, **rule-based geometric layer** (EAR, MAR and temporal filtering). No custom model training or dataset is required, and inference runs on CPU.
 
 ## 2. Problem Statement and Objectives
 
@@ -186,6 +186,18 @@ flowchart TD
 
 The system uses **MediaPipe Face Mesh**, which predicts **468 3D facial landmarks** (478 when `refine_landmarks=True`, which adds iris landmarks) from a single RGB image. Only six landmarks per eye and eight landmarks around the mouth are used.
 
+**Deep learning inside MediaPipe.** Face Mesh is a two-stage neural pipeline, and this is the only learned component of the project:
+
+| Stage | Model | Role |
+| --- | --- | --- |
+| 1. Face detection | **BlazeFace**, a lightweight convolutional detector (SSD-style) | Locates the face and a few key points in the frame |
+| 2. Landmark regression | **Face landmark CNN** | Takes the cropped face and regresses the 3D mesh |
+| 2b. Refinement (`refine_landmarks=True`) | **Attention Mesh** sub-models | Improves the eye, lip and iris regions, which are exactly the regions EAR and MAR depend on |
+
+After the first detection, MediaPipe runs in **tracking mode**: it follows the face from the previous frame's landmarks and re-runs the detector only when tracking confidence drops below `min_tracking_confidence`. This is what keeps it fast on CPU.
+
+**Division of labour in this project.** The neural networks answer *where the facial landmarks are*. The project's own logic answers *what the landmarks mean*, using EAR and MAR formulas, thresholds and frame counters. This keeps the fatigue decision interpretable and tunable, and means we did not need to collect a drowsiness dataset or train a classifier.
+
 | Region | Landmark indices (MediaPipe) |
 | --- | --- |
 | Left eye | `33, 160, 158, 133, 153, 144` |
@@ -277,7 +289,7 @@ To add or change study tips, edit `tips.csv` with no code changes. Use the forma
 
 | Decision | Rationale |
 | --- | --- |
-| Landmark geometry (EAR/MAR) instead of a trained CNN | No dataset or GPU needed, fast on CPU, and the output is interpretable and tunable |
+| Pretrained landmark CNN (MediaPipe) plus rule-based EAR/MAR, instead of training an end-to-end drowsiness classifier | No dataset or GPU needed, fast on CPU, and the fatigue decision is interpretable and tunable |
 | Server-side inference | Keeps the browser light and puts the vision stack in one place |
 | Leaky counters instead of single-frame decisions | Suppresses false alarms from blinks and brief mouth movements |
 | Average of both eyes | More robust to head tilt and single-eye landmark noise |
@@ -503,6 +515,7 @@ An honest account of the current scope:
 - **Lighting and pose sensitivity.** Poor lighting, strong head rotation, heavy occlusion or reflective glasses can degrade landmark quality.
 - **Frame-based timing.** Detection limits are measured in frames, so behaviour varies with the client's capture rate and network latency.
 - **Per-frame network round trip.** Each frame is uploaded to the server, which adds latency and bandwidth cost compared with on-device inference.
+- **Dependence on a pretrained model.** Detection quality is bounded by MediaPipe's landmark accuracy, which this project does not retrain or fine-tune.
 - **Geometric indicators only.** The system detects eye closure and mouth opening, not deeper indicators such as head nodding, gaze or physiological signals.
 - **Privacy.** Frames are decoded and analysed in memory and are not written to disk by the application code, but they are still transmitted to the server. Use HTTPS in deployment.
 
@@ -544,10 +557,12 @@ An honest account of the current scope:
 
 1. T. Soukupová and J. Čech, "Real-Time Eye Blink Detection using Facial Landmarks," *21st Computer Vision Winter Workshop*, 2016.
 2. Y. Kartynnik, A. Ablavatski, I. Grishchenko and M. Grundmann, "Real-time Facial Surface Geometry from Monocular Video on Mobile GPUs," *CVPR Workshop on Computer Vision for Augmented and Virtual Reality*, 2019.
-3. C. Lugaresi et al., "MediaPipe: A Framework for Building Perception Pipelines," arXiv:1906.08172, 2019.
-4. G. Bradski, "The OpenCV Library," *Dr. Dobb's Journal of Software Tools*, 2000.
-5. [MediaPipe Face Mesh documentation](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker), Google.
-6. [Flask documentation](https://flask.palletsprojects.com/) · [OpenCV documentation](https://docs.opencv.org/) · [SciPy documentation](https://docs.scipy.org/)
+3. V. Bazarevsky, Y. Kartynnik, A. Vakunov, K. Raveendran and M. Grundmann, "BlazeFace: Sub-millisecond Neural Face Detection on Mobile GPUs," arXiv:1907.05047, 2019.
+4. I. Grishchenko et al., "Attention Mesh: High-fidelity Face Mesh Prediction in Real-time," arXiv:2006.10962, 2020.
+5. C. Lugaresi et al., "MediaPipe: A Framework for Building Perception Pipelines," arXiv:1906.08172, 2019.
+6. G. Bradski, "The OpenCV Library," *Dr. Dobb's Journal of Software Tools*, 2000.
+7. [MediaPipe Face Mesh documentation](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker), Google.
+8. [Flask documentation](https://flask.palletsprojects.com/) · [OpenCV documentation](https://docs.opencv.org/) · [SciPy documentation](https://docs.scipy.org/)
 
 ## 19. Author
 
